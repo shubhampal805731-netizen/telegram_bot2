@@ -8,7 +8,11 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppI
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
 # ---------------- CONFIG ----------------
-print("TOKEN:", TOKEN)
+TOKEN = os.getenv("TOKEN")
+
+if not TOKEN:
+    print("❌ TOKEN NOT FOUND - CHECK ENV VARIABLE")
+
 VERIFY_GROUP_ID = -1003940967427
 
 REG_LINK = "https://1weqdt.life/casino/list?open=register&p=pw1l"
@@ -55,13 +59,20 @@ async def show_screen(uid, context, text, keyboard, image=None):
         pass
 
     if image:
-        msg = await context.bot.send_photo(uid, image, caption=text,
-                                           reply_markup=InlineKeyboardMarkup(keyboard),
-                                           parse_mode="Markdown")
+        msg = await context.bot.send_photo(
+            chat_id=uid,
+            photo=image,
+            caption=text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown"
+        )
     else:
-        msg = await context.bot.send_message(uid, text,
-                                             reply_markup=InlineKeyboardMarkup(keyboard),
-                                             parse_mode="Markdown")
+        msg = await context.bot.send_message(
+            chat_id=uid,
+            text=text,
+            reply_markup=InlineKeyboardMarkup(keyboard),
+            parse_mode="Markdown"
+        )
 
     user_last_msg[uid] = msg.message_id
 
