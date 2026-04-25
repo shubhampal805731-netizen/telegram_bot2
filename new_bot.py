@@ -1,17 +1,18 @@
 import logging
+import asyncio
+import os
+
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
 # ---------------- CONFIG ----------------
-# 🔑 APNA TOKEN DAAL
-import os
 TOKEN = os.getenv("TOKEN")
 VERIFY_GROUP_ID = -1003940967427
 
 REG_LINK = "https://1weqdt.life/casino/list?open=register&p=pw1l"
 PREDICTOR_URL = "https://musical-biscochitos-9846bc.netlify.app/"
 
-# 🔥 FILE_ID IMAGES (NO BLUE ISSUE)
+# ---------------- IMAGES ----------------
 START_IMG = "AgACAgUAAxkBAAIBImnq0Z281-_HI1LQtxbDGjTDBGD3AAIOEWsbba5ZV2C2xSmH7R4AAQEAAwIAA3kAAzsE"
 STEP_IMG = "AgACAgUAAxkBAAIBKGnq0f8n8kgsRF0dakH9NaNwSJPRAAIQEWsbba5ZV9WqVW_bSC8uAQADAgADeQADOwQ"
 SUCCESS_IMG = "AgACAgUAAxkBAAIBJGnq0adOwepZKar859UrgSkm6Dd-AAIPEWsbba5ZV9J092-Ij5Q2AQADAgADeQADOwQ"
@@ -26,25 +27,18 @@ async def track_group_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
         return
 
     try:
-        msg = update.message.text or ""
-        parts = [p.strip() for p in msg.split(":")]
-
-        raw_id = parts[0]
-        pid = "".join(filter(str.isdigit, raw_id))
-
+        parts = [p.strip() for p in (update.message.text or "").split(":")]
+        pid = "".join(filter(str.isdigit, parts[0]))
         amount = float(parts[2]) if len(parts) >= 3 else 0.0
-
         registered_ids[pid] = amount
-        print(f"✅ SYNCED: {pid} | {amount}")
-
-    except Exception as e:
-        print("SYNC ERROR:", e)
+    except:
+        pass
 
 # ---------------- UI ----------------
 async def show_screen(uid, context, text, keyboard, image=None):
     try:
         if uid in user_last_msg:
-            await context.bot.delete_message(chat_id=uid, message_id=user_last_msg[uid])
+            await context.bot.delete_message(uid, user_last_msg[uid])
     except:
         pass
 
@@ -72,14 +66,10 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = (
         "🎰 Welcome to Jetphile AI Bot.\n\n"
-
-        "🤖 Built on an AI-assisted system trained on extensive gameplay data and structured signal logic.\n\n"
-
-        "📊 The model has been tested across 10,000+ game rounds and continues to improve over time.\n\n"
-
-        "🎯 Current performance metrics indicate signal accuracy up to 95% under tracked conditions.\n\n"
-
-        "🔐 Access is provided after completing the required setup steps below."
+        "🤖 AI-based system trained on gameplay data.\n\n"
+        "📊 Tested on 10,000+ rounds.\n\n"
+        "🎯 Accuracy up to 95%.\n\n"
+        "🔐 Complete steps to unlock access."
     )
 
     keyboard = [[InlineKeyboardButton("📋 Conditions", callback_data="step1")]]
@@ -93,16 +83,10 @@ async def step1(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
     text = (
         "🌐 Step 1 — Register\n\n"
-
-        "Register to unlock access, verification, and the next stage of the system.\n\n"
-
-        "A new account is required so the activation process works correctly and your access can be confirmed without errors.\n\n"
-
-        "1️⃣ If the “REGISTER” button opens an old account, log out and try again.\n\n"
-
-        "2️⃣ Use the promo code during registration: AVAIBABA\n\n"
-
-        "✅ After completing registration, press “CHECK REGISTRATION” to verify your account and continue."
+        "Create a new account to continue.\n\n"
+        "1️⃣ Logout if old account opens\n\n"
+        "2️⃣ Use promo code: AVAIBABA\n\n"
+        "✅ Then click CHECK REGISTRATION"
     )
 
     keyboard = [
@@ -123,58 +107,34 @@ async def verify(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
         return
 
-    raw = update.message.text or ""
-    player_id = "".join(filter(str.isdigit, raw))
+    player_id = "".join(filter(str.isdigit, update.message.text or ""))
 
     try:
         await update.message.delete()
     except:
         pass
 
-    await show_screen(uid, context, "⏳ Checking your deposit...\nPlease wait...", [])
+    await show_screen(uid, context, "⏳ Checking your deposit...", [])
 
-    if player_id in registered_ids:
-        deposit = registered_ids[player_id]
-
-        if deposit >= 10:
-            text = (
-                "✅ Deposit Verified Successfully!\n\n"
-                "👇 Click below to continue"
-            )
-
-            keyboard = [
-                [InlineKeyboardButton("🚀 GET SIGNALS", web_app=WebAppInfo(url=PREDICTOR_URL))]
-            ]
-
-            await show_screen(uid, context, text, keyboard, SUCCESS_IMG)
-
-        else:
-            text = (
-                "❌ Deposit Not Found\n\n"
-                "Minimum required: 10 USDT"
-            )
-
-            keyboard = [
-                [InlineKeyboardButton("💰 DEPOSIT NOW", url=REG_LINK)],
-                [InlineKeyboardButton("🔁 TRY AGAIN", callback_data="ask_id")]
-            ]
-
-            await show_screen(uid, context, text, keyboard, STEP_IMG)
-
-    else:
-        text = (
-            f"❌ ID {player_id} Not Found\n\n"
-            "Try again after 1-2 minutes"
-        )
+    if player_id in registered_ids and registered_ids[player_id] >= 10:
+        text = "✅ Deposit Verified\n\n👇 Click below"
 
         keyboard = [
-            [InlineKeyboardButton("🔁 TRY AGAIN", callback_data="ask_id")]
+            [InlineKeyboardButton("🚀 GET SIGNALS", web_app=WebAppInfo(url=PREDICTOR_URL))]
+        ]
+
+        await show_screen(uid, context, text, keyboard, SUCCESS_IMG)
+
+    else:
+        text = "❌ Deposit not found\n\nTry again"
+
+        keyboard = [
+            [InlineKeyboardButton("🔁 Retry", callback_data="ask_id")]
         ]
 
         await show_screen(uid, context, text, keyboard, STEP_IMG)
 
-import asyncio
-
+# ---------------- MAIN ----------------
 async def main():
     app = Application.builder().token(TOKEN).build()
 
@@ -186,12 +146,7 @@ async def main():
 
     print("🔥 BOT RUNNING FINAL VERSION")
 
-    await app.initialize()
-    await app.start()
-    await app.updater.start_polling()
-
-    # bot ko chalne dena
-    await asyncio.Event().wait()
+    await app.run_polling()
 
 if __name__ == "__main__":
     asyncio.run(main())
