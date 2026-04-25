@@ -135,6 +135,10 @@ async def verify(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ---------------- MAIN ----------------
 async def main():
+    if not TOKEN:
+        print("❌ TOKEN NOT FOUND")
+        return
+
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -145,6 +149,7 @@ async def main():
 
     print("🔥 BOT STARTED SUCCESSFULLY")
 
+    # Flask thread safe start
     threading.Thread(target=run_web, daemon=True).start()
 
     await app.initialize()
@@ -153,7 +158,7 @@ async def main():
 
     print("🚀 POLLING STARTED")
 
-    await app.run_polling()
-
+    # 🔥 FIX: run_polling ko proper await ke saath
+    await app.run_polling(close_loop=False)
 if __name__ == "__main__":
     asyncio.run(main())
