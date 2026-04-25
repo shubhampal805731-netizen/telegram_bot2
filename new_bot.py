@@ -8,7 +8,7 @@ from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppI
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
 
 # ---------------- CONFIG ----------------
-TOKEN = os.getenv("TOKEN")
+print("TOKEN:", TOKEN)
 VERIFY_GROUP_ID = -1003940967427
 
 REG_LINK = "https://1weqdt.life/casino/list?open=register&p=pw1l"
