@@ -173,20 +173,25 @@ async def verify(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
         await show_screen(uid, context, text, keyboard, STEP_IMG)
 
-# ---------------- MAIN ----------------
-def main():
+import asyncio
+
+async def main():
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(MessageHandler(filters.TEXT & filters.Chat(VERIFY_GROUP_ID), track_group_data))
-
     app.add_handler(CommandHandler("start", start))
     app.add_handler(CallbackQueryHandler(step1, pattern="step1"))
     app.add_handler(CallbackQueryHandler(ask_id, pattern="ask_id"))
-
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, verify))
 
     print("🔥 BOT RUNNING FINAL VERSION")
-    app.run_polling()
+
+    await app.initialize()
+    await app.start()
+    await app.updater.start_polling()
+
+    # bot ko chalne dena
+    await asyncio.Event().wait()
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())
