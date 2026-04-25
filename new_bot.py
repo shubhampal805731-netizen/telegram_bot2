@@ -1,6 +1,8 @@
 import logging
 import asyncio
 import os
+import threading
+from flask import Flask
 
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup, WebAppInfo
 from telegram.ext import Application, CommandHandler, CallbackQueryHandler, MessageHandler, filters, ContextTypes
@@ -11,6 +13,17 @@ VERIFY_GROUP_ID = -1003940967427
 
 REG_LINK = "https://1weqdt.life/casino/list?open=register&p=pw1l"
 PREDICTOR_URL = "https://musical-biscochitos-9846bc.netlify.app/"
+
+# ---------------- FLASK (PORT FIX) ----------------
+app_flask = Flask(__name__)
+
+@app_flask.route('/')
+def home():
+    return "Bot is running"
+
+def run_web():
+    port = int(os.environ.get("PORT", 10000))
+    app_flask.run(host='0.0.0.0', port=port)
 
 # ---------------- IMAGES ----------------
 START_IMG = "AgACAgUAAxkBAAIBImnq0Z281-_HI1LQtxbDGjTDBGD3AAIOEWsbba5ZV2C2xSmH7R4AAQEAAwIAA3kAAzsE"
@@ -25,7 +38,6 @@ user_last_msg = {}
 async def track_group_data(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message or update.effective_chat.id != VERIFY_GROUP_ID:
         return
-
     try:
         parts = [p.strip() for p in (update.message.text or "").split(":")]
         pid = "".join(filter(str.isdigit, parts[0]))
@@ -43,20 +55,13 @@ async def show_screen(uid, context, text, keyboard, image=None):
         pass
 
     if image:
-        msg = await context.bot.send_photo(
-            chat_id=uid,
-            photo=image,
-            caption=text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="Markdown"
-        )
+        msg = await context.bot.send_photo(uid, image, caption=text,
+                                           reply_markup=InlineKeyboardMarkup(keyboard),
+                                           parse_mode="Markdown")
     else:
-        msg = await context.bot.send_message(
-            chat_id=uid,
-            text=text,
-            reply_markup=InlineKeyboardMarkup(keyboard),
-            parse_mode="Markdown"
-        )
+        msg = await context.bot.send_message(uid, text,
+                                             reply_markup=InlineKeyboardMarkup(keyboard),
+                                             parse_mode="Markdown")
 
     user_last_msg[uid] = msg.message_id
 
@@ -78,15 +83,14 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ---------------- STEP ----------------
 async def step1(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    query = update.callback_query
-    await query.answer()
+    q = update.callback_query
+    await q.answer()
 
     text = (
         "🌐 Step 1 — Register\n\n"
-        "Create a new account to continue.\n\n"
-        "1️⃣ Logout if old account opens\n\n"
-        "2️⃣ Use promo code: AVAIBABA\n\n"
-        "✅ Then click CHECK REGISTRATION"
+        "Create a new account\n\n"
+        "Use promo: AVAIBABA\n\n"
+        "Then click CHECK REGISTRATION"
     )
 
     keyboard = [
@@ -94,11 +98,11 @@ async def step1(update: Update, context: ContextTypes.DEFAULT_TYPE):
         [InlineKeyboardButton("🔍 CHECK REGISTRATION", callback_data="ask_id")]
     ]
 
-    await show_screen(query.from_user.id, context, text, keyboard, STEP_IMG)
+    await show_screen(q.from_user.id, context, text, keyboard, STEP_IMG)
 
 # ---------------- ASK ID ----------------
 async def ask_id(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    await update.callback_query.answer("👉 Send your Player ID", show_alert=True)
+    await update.callback_query.answer("Send Player ID", show_alert=True)
 
 # ---------------- VERIFY ----------------
 async def verify(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -107,32 +111,16 @@ async def verify(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if update.effective_chat.type != "private":
         return
 
-    player_id = "".join(filter(str.isdigit, update.message.text or ""))
+    pid = "".join(filter(str.isdigit, update.message.text or ""))
 
-    try:
-        await update.message.delete()
-    except:
-        pass
+    await show_screen(uid, context, "⏳ Checking deposit...", [])
 
-    await show_screen(uid, context, "⏳ Checking your deposit...", [])
-
-    if player_id in registered_ids and registered_ids[player_id] >= 10:
-        text = "✅ Deposit Verified\n\n👇 Click below"
-
-        keyboard = [
-            [InlineKeyboardButton("🚀 GET SIGNALS", web_app=WebAppInfo(url=PREDICTOR_URL))]
-        ]
-
-        await show_screen(uid, context, text, keyboard, SUCCESS_IMG)
-
+    if pid in registered_ids and registered_ids[pid] >= 10:
+        keyboard = [[InlineKeyboardButton("🚀 GET SIGNALS", web_app=WebAppInfo(url=PREDICTOR_URL))]]
+        await show_screen(uid, context, "✅ Verified", keyboard, SUCCESS_IMG)
     else:
-        text = "❌ Deposit not found\n\nTry again"
-
-        keyboard = [
-            [InlineKeyboardButton("🔁 Retry", callback_data="ask_id")]
-        ]
-
-        await show_screen(uid, context, text, keyboard, STEP_IMG)
+        keyboard = [[InlineKeyboardButton("🔁 Retry", callback_data="ask_id")]]
+        await show_screen(uid, context, "❌ Not found", keyboard, STEP_IMG)
 
 # ---------------- MAIN ----------------
 async def main():
@@ -144,7 +132,10 @@ async def main():
     app.add_handler(CallbackQueryHandler(ask_id, pattern="ask_id"))
     app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, verify))
 
-    print("🔥 BOT RUNNING FINAL VERSION")
+    print("🔥 BOT RUNNING")
+
+    # 👉 Web server thread
+    threading.Thread(target=run_web).start()
 
     await app.run_polling()
 
