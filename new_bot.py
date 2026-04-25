@@ -12,6 +12,7 @@ TOKEN = os.getenv("TOKEN")
 
 if not TOKEN:
     print("❌ TOKEN NOT FOUND - CHECK ENV VARIABLE")
+    exit()
 
 VERIFY_GROUP_ID = -1003940967427
 
@@ -135,10 +136,6 @@ async def verify(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ---------------- MAIN ----------------
 async def main():
-    if not TOKEN:
-        print("❌ TOKEN NOT FOUND")
-        return
-
     app = Application.builder().token(TOKEN).build()
 
     app.add_handler(CommandHandler("start", start))
@@ -149,7 +146,7 @@ async def main():
 
     print("🔥 BOT STARTED SUCCESSFULLY")
 
-    # Flask thread safe start
+    # Flask thread
     threading.Thread(target=run_web, daemon=True).start()
 
     await app.initialize()
@@ -158,7 +155,8 @@ async def main():
 
     print("🚀 POLLING STARTED")
 
-    # 🔥 FIX: run_polling ko proper await ke saath
+    # ✅ FIXED LINE
     await app.run_polling(close_loop=False)
+
 if __name__ == "__main__":
     asyncio.run(main())
