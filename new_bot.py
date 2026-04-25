@@ -136,16 +136,29 @@ async def verify(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 # ---------------- MAIN ----------------
 async def main():
-    app = Application.builder().token(TOKEN).build()
+    try:
+        app = Application.builder().token(TOKEN).build()
 
-    app.add_handler(CommandHandler("start", start))
-    app.add_handler(CallbackQueryHandler(step1, pattern="step1"))
-    app.add_handler(CallbackQueryHandler(ask_id, pattern="ask_id"))
-    app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, verify))
-    app.add_handler(MessageHandler(filters.TEXT & filters.Chat(VERIFY_GROUP_ID), track_group_data))
+        app.add_handler(CommandHandler("start", start))
+        app.add_handler(CallbackQueryHandler(step1, pattern="step1"))
+        app.add_handler(CallbackQueryHandler(ask_id, pattern="ask_id"))
+        app.add_handler(MessageHandler(filters.TEXT & filters.ChatType.PRIVATE, verify))
+        app.add_handler(MessageHandler(filters.TEXT & filters.Chat(VERIFY_GROUP_ID), track_group_data))
 
-    print("🔥 BOT STARTED SUCCESSFULLY")
+        print("🔥 BOT STARTED")
 
+        threading.Thread(target=run_web, daemon=True).start()
+
+        await app.initialize()
+        await app.start()
+        await app.bot.delete_webhook(drop_pending_updates=True)
+
+        print("🚀 POLLING STARTED")
+
+        await app.run_polling()
+
+    except Exception as e:
+        print("❌ FULL ERROR:", e)
     # Flask thread
     threading.Thread(target=run_web, daemon=True).start()
 
